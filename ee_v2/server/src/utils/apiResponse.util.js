@@ -1,0 +1,13 @@
+class ApiResponse {
+  constructor(statusCode, data = null, message = "Success") {
+    this.statusCode = statusCode;
+    this.success = statusCode >= 200 && statusCode < 300;
+    this.message = message;
+
+    if (data !== null && data !== undefined) {
+      this.data = data;
+    }
+  }
+}
+
+export default ApiResponse;
