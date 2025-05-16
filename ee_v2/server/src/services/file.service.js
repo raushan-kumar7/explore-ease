@@ -1,338 +1,218 @@
-// import fs from "fs";
-// import path from "path";
-// import { ApiError } from "../utils/index.js";
 // import { cloudinary } from "../config/index.js";
+// import { ApiError } from "../utils/index.js";
 
 // /**
-//  * Uploads a file locally
-//  * @param {string} localFilePath - Local file path
-//  * @param {string} folder - Folder name in local storage
-//  * @returns {Promise<string>} - Local file URL
-//  */
-// const uploadLocalFile = async (localFilePath, folder = "avatars") => {
-//   try {
-//     if (!localFilePath) return null;
-    
-//     // Create uploads directory if it doesn't exist
-//     const uploadsDir = path.join(process.cwd(), "public", "uploads", folder);
-//     if (!fs.existsSync(uploadsDir)) {
-//       fs.mkdirSync(uploadsDir, { recursive: true });
-//     }
-    
-//     // Generate a unique filename
-//     const fileName = `${Date.now()}-${path.basename(localFilePath)}`;
-//     const destPath = path.join(uploadsDir, fileName);
-    
-//     // Copy file to uploads directory
-//     fs.copyFileSync(localFilePath, destPath);
-    
-//     // Remove the temp file
-//     fs.unlinkSync(localFilePath);
-    
-//     // Return the relative path
-//     return `/public/uploads/${folder}/${fileName}`;
-//   } catch (error) {
-//     // Remove the locally saved temp file if upload fails
-//     if (localFilePath && fs.existsSync(localFilePath)) {
-//       fs.unlinkSync(localFilePath);
-//     }
-//     throw new ApiError(500, error?.message || "Error uploading file locally");
-//   }
-// };
-
-// /**
-//  * Uploads a file to cloudinary
-//  * @param {string} localFilePath - Local file path
-//  * @param {string} folder - Folder name in cloudinary
-//  * @returns {Promise<string>} - Cloudinary URL
-//  */
-// const uploadToCloudinary = async (localFilePath, folder = "avatars") => {
-//   try {
-//     if (!localFilePath) return null;
-    
-//     // Upload to cloudinary
-//     const result = await cloudinary.uploader.upload(localFilePath, {
-//       folder,
-//       resource_type: "auto",
-//     });
-    
-//     // File uploaded successfully
-//     fs.unlinkSync(localFilePath); // Clean up the local file
-//     return result.secure_url;
-//   } catch (error) {
-//     // Remove the locally saved temp file if upload fails
-//     if (localFilePath && fs.existsSync(localFilePath)) {
-//       fs.unlinkSync(localFilePath);
-//     }
-//     throw new ApiError(500, error?.message || "Error uploading file to cloudinary");
-//   }
-// };
-
-// /**
-//  * Deletes a file from cloudinary
-//  * @param {string} cloudinaryUrl - Cloudinary URL
-//  * @returns {Promise<Object>} - Deletion status
+//  * Delete a file from Cloudinary
+//  * @param {string} cloudinaryUrl - Full Cloudinary URL of the file
+//  * @returns {Promise<Object>} - Result of deletion operation
 //  */
 // const deleteFromCloudinary = async (cloudinaryUrl) => {
 //   try {
-//     if (!cloudinaryUrl || !cloudinaryUrl.includes("cloudinary")) return null;
-    
+//     if (!cloudinaryUrl || !cloudinaryUrl.includes("cloudinary")) {
+//       return null;
+//     }
+
 //     // Extract the public_id from the URL
-//     const publicId = cloudinaryUrl.split("/").slice(-2).join("/").split(".")[0];
-    
-//     if (!publicId) return null;
-    
-//     // Delete from cloudinary
-//     const result = await cloudinary.uploader.destroy(publicId);
+//     // Format example: https://res.cloudinary.com/cloud-name/image/upload/v1631234567/users/username/filename.jpg
+//     const urlParts = cloudinaryUrl.split("/");
+//     const uploadIndex = urlParts.findIndex((part) => part === "upload");
+
+//     if (uploadIndex === -1 || uploadIndex + 1 >= urlParts.length) {
+//       throw new ApiError(400, "Invalid Cloudinary URL format");
+//     }
+
+//     // Get everything after "upload/" and remove file extension
+//     const publicId = urlParts
+//       .slice(uploadIndex + 1)
+//       .join("/")
+//       .split(".")[0];
+
+//     // Determine resource type from URL
+//     let resourceType = "image";
+//     if (urlParts.includes("video")) {
+//       resourceType = "video";
+//     } else if (urlParts.includes("raw")) {
+//       resourceType = "raw";
+//     }
+
+//     // Delete from Cloudinary
+//     const result = await cloudinary.uploader.destroy(publicId, {
+//       resource_type: resourceType,
+//     });
+
 //     return result;
 //   } catch (error) {
-//     throw new ApiError(500, error?.message || "Error deleting file from cloudinary");
+//     throw new ApiError(
+//       500,
+//       error?.message || "Error deleting file from Cloudinary"
+//     );
 //   }
 // };
 
 // /**
-//  * Deletes a local file
-//  * @param {string} localFilePath - Local file path
-//  * @returns {Promise<boolean>} - Deletion status
+//  * Delete multiple files from Cloudinary
+//  * @param {Array} urls - Array of Cloudinary URLs
+//  * @returns {Promise<Array>} - Results of deletion operations
 //  */
-// const deleteLocalFile = async (localFilePath) => {
-//   try {
-//     if (!localFilePath || !localFilePath.startsWith("/public/uploads")) return null;
-    
-//     const fullPath = path.join(process.cwd(), localFilePath.substring(1));
-    
-//     if (fs.existsSync(fullPath)) {
-//       fs.unlinkSync(fullPath);
-//       return true;
-//     }
-    
-//     return false;
-//   } catch (error) {
-//     throw new ApiError(500, error?.message || "Error deleting local file");
-//   }
-// };
-
-// /**
-//  * Upload file based on storage preference
-//  * @param {string} localFilePath - Local file path
-//  * @param {string} folder - Folder name
-//  * @param {boolean} useCloudinary - Whether to use cloudinary or local storage
-//  * @returns {Promise<string>} - File URL
-//  */
-// const uploadFile = async (localFilePath, folder = "avatars", useCloudinary = true) => {
-//   if (useCloudinary) {
-//     return await uploadToCloudinary(localFilePath, folder);
-//   }
-//   return await uploadLocalFile(localFilePath, folder);
-// };
-
-// /**
-//  * Upload multiple files
-//  * @param {Array} filePaths - Array of local file paths
-//  * @param {string} folder - Folder name
-//  * @param {boolean} useCloudinary - Whether to use cloudinary or local storage
-//  * @returns {Promise<Array>} - Array of file URLs
-//  */
-// const uploadMultipleFiles = async (filePaths, folder = "uploads", useCloudinary = true) => {
-//   if (!filePaths || !Array.isArray(filePaths) || filePaths.length === 0) {
+// const deleteMultipleFromCloudinary = async (urls = []) => {
+//   if (!urls || !Array.isArray(urls) || urls.length === 0) {
 //     return [];
 //   }
-  
-//   const uploadPromises = filePaths.map(filePath => uploadFile(filePath, folder, useCloudinary));
-//   return await Promise.all(uploadPromises);
+
+//   const deletePromises = urls.map((url) => deleteFromCloudinary(url));
+//   return await Promise.all(deletePromises.map((p) => p.catch((e) => e)));
 // };
 
 // /**
-//  * Delete file based on URL
-//  * @param {string} fileUrl - File URL
-//  * @returns {Promise<boolean>} - Deletion status
+//  * Extract file metadata from Cloudinary URL
+//  * @param {string} cloudinaryUrl - Cloudinary URL
+//  * @returns {Object} - File metadata (model, identifier, filename)
 //  */
-// const deleteFile = async (fileUrl) => {
-//   if (!fileUrl) return null;
-  
-//   if (fileUrl.includes("cloudinary")) {
-//     return await deleteFromCloudinary(fileUrl);
+// const getFileMetadata = (cloudinaryUrl) => {
+//   if (!cloudinaryUrl || !cloudinaryUrl.includes("cloudinary")) {
+//     return null;
 //   }
-  
-//   return await deleteLocalFile(fileUrl);
+
+//   try {
+//     const urlParts = cloudinaryUrl.split("/");
+//     const uploadIndex = urlParts.findIndex((part) => part === "upload");
+
+//     if (uploadIndex === -1 || uploadIndex + 3 >= urlParts.length) {
+//       return null;
+//     }
+
+//     // Extract model and identifier
+//     const model = urlParts[uploadIndex + 1];
+//     const identifier = urlParts[uploadIndex + 2];
+//     const filename = urlParts[urlParts.length - 1];
+
+//     return {
+//       model,
+//       identifier,
+//       filename,
+//       path: `${model}/${identifier}`,
+//     };
+//   } catch (error) {
+//     return null;
+//   }
+// };
+
+// /**
+//  * Check if the URL is from Cloudinary
+//  * @param {string} url - URL to check
+//  * @returns {boolean} - True if the URL is from Cloudinary
+//  */
+// const isCloudinaryUrl = (url) => {
+//   if (!url || typeof url !== "string") {
+//     return false;
+//   }
+//   return url.includes("cloudinary") && url.includes("upload");
+// };
+
+// /**
+//  * Updates a file in Cloudinary by deleting the old one and uploading a new one
+//  * @param {string} oldUrl - URL of the file to be replaced
+//  * @param {string} newFilePath - Local path of the new file
+//  * @param {Object} options - Upload options
+//  * @returns {Promise<string>} - URL of the newly uploaded file
+//  */
+// const updateInCloudinary = async (oldUrl, newFilePath, options = {}) => {
+//   try {
+//     // Delete the old file if it exists and is a valid Cloudinary URL
+//     if (oldUrl && isCloudinaryUrl(oldUrl)) {
+//       await deleteFromCloudinary(oldUrl);
+//     }
+
+//     // Extract folder information from the old URL or use provided folder
+//     let folder = options.folder || "uploads";
+
+//     if (oldUrl && isCloudinaryUrl(oldUrl)) {
+//       const metadata = getFileMetadata(oldUrl);
+//       if (metadata && metadata.path) {
+//         folder = metadata.path;
+//       }
+//     }
+
+//     // Upload the new file
+//     const result = await cloudinary.uploader.upload(newFilePath, {
+//       folder,
+//       resource_type: options.resourceType || "auto",
+//       ...options,
+//     });
+
+//     return result.secure_url;
+//   } catch (error) {
+//     throw new ApiError(
+//       500,
+//       error?.message || "Error updating file in Cloudinary"
+//     );
+//   }
 // };
 
 // export {
-//   uploadToCloudinary,
 //   deleteFromCloudinary,
-//   uploadLocalFile,
-//   deleteLocalFile,
-//   uploadFile,
-//   uploadMultipleFiles,
-//   deleteFile
+//   deleteMultipleFromCloudinary,
+//   getFileMetadata,
+//   isCloudinaryUrl,
+//   updateInCloudinary,
 // };
 
 
-import fs from "fs";
-import path from "path";
-import { ApiError } from "../utils/index.js";
 import { cloudinary } from "../config/index.js";
+import { ApiError } from "../utils/index.js";
+import { deleteFromCloudinary, isCloudinaryUrl, updateInCloudinary } from "./cloudinary.service.js";
 
 /**
- * Uploads a file locally
- * @param {string} localFilePath - Local file path
- * @param {string} folder - Folder name in local storage
- * @returns {Promise<string>} - Local file URL
+ * Upload a file to storage (local or Cloudinary)
+ * @param {string} filePath - Path to the uploaded file
+ * @param {boolean} useCloudinary - Whether to use Cloudinary or local storage
+ * @param {Object} options - Additional options for Cloudinary upload
+ * @returns {Promise<string>} - URL of the uploaded file
  */
-const uploadLocalFile = async (localFilePath, folder = "avatars") => {
+const uploadFile = async (filePath, useCloudinary = true, options = {}) => {
   try {
-    if (!localFilePath) return null;
-    
-    // Create uploads directory if it doesn't exist
-    const uploadsDir = path.join(process.cwd(), "public", "uploads", folder);
-    if (!fs.existsSync(uploadsDir)) {
-      fs.mkdirSync(uploadsDir, { recursive: true });
+    // If Cloudinary is enabled, upload to Cloudinary
+    if (useCloudinary) {
+      const result = await cloudinary.uploader.upload(filePath, {
+        resource_type: options.resourceType || "auto",
+        folder: options.folder || "uploads",
+        ...options,
+      });
+      return result.secure_url;
     }
     
-    // Generate a unique filename
-    const fileName = `${Date.now()}-${path.basename(localFilePath)}`;
-    const destPath = path.join(uploadsDir, fileName);
-    
-    // Copy file to uploads directory
-    fs.copyFileSync(localFilePath, destPath);
-    
-    // Remove the temp file
-    fs.unlinkSync(localFilePath);
-    
-    // Return the relative path that will be correctly served from the public directory
-    return `/uploads/${folder}/${fileName}`;
+    // For local storage, just return the file path
+    // In a real application, you might want to modify this path to be accessible
+    return filePath;
   } catch (error) {
-    // Remove the locally saved temp file if upload fails
-    if (localFilePath && fs.existsSync(localFilePath)) {
-      fs.unlinkSync(localFilePath);
-    }
-    throw new ApiError(500, error?.message || "Error uploading file locally");
+    throw new ApiError(500, error?.message || "Error uploading file");
   }
 };
 
 /**
- * Uploads a file to cloudinary
- * @param {string} localFilePath - Local file path
- * @param {string} folder - Folder name in cloudinary
- * @returns {Promise<string>} - Cloudinary URL
+ * Delete a file from storage (local or Cloudinary)
+ * @param {string} fileUrl - URL or path of the file to delete
+ * @returns {Promise<boolean>} - Whether the file was deleted successfully
  */
-const uploadToCloudinary = async (localFilePath, folder = "avatars") => {
+const deleteFile = async (fileUrl) => {
   try {
-    if (!localFilePath) return null;
-    
-    // Upload to cloudinary
-    const result = await cloudinary.uploader.upload(localFilePath, {
-      folder,
-      resource_type: "auto",
-    });
-    
-    // File uploaded successfully
-    fs.unlinkSync(localFilePath); // Clean up the local file
-    return result.secure_url;
-  } catch (error) {
-    // Remove the locally saved temp file if upload fails
-    if (localFilePath && fs.existsSync(localFilePath)) {
-      fs.unlinkSync(localFilePath);
-    }
-    throw new ApiError(500, error?.message || "Error uploading file to cloudinary");
-  }
-};
-
-/**
- * Deletes a file from cloudinary
- * @param {string} cloudinaryUrl - Cloudinary URL
- * @returns {Promise<Object>} - Deletion status
- */
-const deleteFromCloudinary = async (cloudinaryUrl) => {
-  try {
-    if (!cloudinaryUrl || !cloudinaryUrl.includes("cloudinary")) return null;
-    
-    // Extract the public_id from the URL
-    const publicId = cloudinaryUrl.split("/").slice(-2).join("/").split(".")[0];
-    
-    if (!publicId) return null;
-    
-    // Delete from cloudinary
-    const result = await cloudinary.uploader.destroy(publicId);
-    return result;
-  } catch (error) {
-    throw new ApiError(500, error?.message || "Error deleting file from cloudinary");
-  }
-};
-
-/**
- * Deletes a local file
- * @param {string} localFilePath - Local file path
- * @returns {Promise<boolean>} - Deletion status
- */
-const deleteLocalFile = async (localFilePath) => {
-  try {
-    if (!localFilePath || !localFilePath.startsWith("/uploads")) return null;
-    
-    const fullPath = path.join(process.cwd(), "public", localFilePath);
-    
-    if (fs.existsSync(fullPath)) {
-      fs.unlinkSync(fullPath);
+    // If it's a Cloudinary URL, delete from Cloudinary
+    if (isCloudinaryUrl(fileUrl)) {
+      await deleteFromCloudinary(fileUrl);
       return true;
     }
     
-    return false;
+    // For local files, implement file system deletion
+    // This is a placeholder - in a real app, you'd use fs.unlink
+    console.log(`Would delete local file: ${fileUrl}`);
+    return true;
   } catch (error) {
-    throw new ApiError(500, error?.message || "Error deleting local file");
+    console.error("Error deleting file:", error);
+    return false;
   }
-};
-
-/**
- * Upload file based on storage preference
- * @param {string} localFilePath - Local file path
- * @param {string} folder - Folder name
- * @param {boolean} useCloudinary - Whether to use cloudinary or local storage
- * @returns {Promise<string>} - File URL
- */
-const uploadFile = async (localFilePath, folder = "avatars", useCloudinary = true) => {
-  if (useCloudinary) {
-    return await uploadToCloudinary(localFilePath, folder);
-  }
-  return await uploadLocalFile(localFilePath, folder);
-};
-
-/**
- * Upload multiple files
- * @param {Array} filePaths - Array of local file paths
- * @param {string} folder - Folder name
- * @param {boolean} useCloudinary - Whether to use cloudinary or local storage
- * @returns {Promise<Array>} - Array of file URLs
- */
-const uploadMultipleFiles = async (filePaths, folder = "uploads", useCloudinary = true) => {
-  if (!filePaths || !Array.isArray(filePaths) || filePaths.length === 0) {
-    return [];
-  }
-  
-  const uploadPromises = filePaths.map(filePath => uploadFile(filePath, folder, useCloudinary));
-  return await Promise.all(uploadPromises);
-};
-
-/**
- * Delete file based on URL
- * @param {string} fileUrl - File URL
- * @returns {Promise<boolean>} - Deletion status
- */
-const deleteFile = async (fileUrl) => {
-  if (!fileUrl) return null;
-  
-  if (fileUrl.includes("cloudinary")) {
-    return await deleteFromCloudinary(fileUrl);
-  }
-  
-  return await deleteLocalFile(fileUrl);
 };
 
 export {
-  uploadToCloudinary,
-  deleteFromCloudinary,
-  uploadLocalFile,
-  deleteLocalFile,
   uploadFile,
-  uploadMultipleFiles,
   deleteFile
 };

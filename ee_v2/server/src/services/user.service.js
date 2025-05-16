@@ -22,7 +22,7 @@ const createUser = async (userData) => {
   const createdUser = await User.findById(user._id).select(
     "-password -refreshToken -resetPasswordToken -resetPasswordExpires"
   );
-  
+
   if (!createdUser) {
     throw new ApiError(500, "Something went wrong while creating new user");
   }
@@ -31,17 +31,19 @@ const createUser = async (userData) => {
 };
 
 /**
- * Find user by ID
- * @param {string} userId - User ID - email
+ * Find user by email or username
+ * @param {string} identifier - User email or username
  * @returns {Promise<Object>} User object
  */
-const findUser = async (userId) => {
-  const user = await User.findOne({email: userId}).select(
+const findUser = async (identifier) => {
+  const user = await User.findOne({
+    $or: [{ email: identifier }, { username: identifier }],
+  }).select(
     "-password -refreshToken -resetPasswordToken -resetPasswordExpires"
   );
 
   if (!user) {
-    throw new ApiError(404, "User doesn't exists.");
+    throw new ApiError(404, "User doesn't exist");
   }
 
   return user;
@@ -58,7 +60,7 @@ const findUserById = async (userId) => {
   );
 
   if (!user) {
-    throw new ApiError(404, "User doesn't exists.");
+    throw new ApiError(404, "User doesn't exist");
   }
 
   return user;
@@ -71,11 +73,11 @@ const findUserById = async (userId) => {
  */
 const findUserByEmail = async (email) => {
   const user = await User.findOne({ email }).select(
-    "-password -refreshToken -resetPasswordToken -resetPasswordExpires"
+    "-refreshToken -resetPasswordToken -resetPasswordExpires"
   );
 
   if (!user) {
-    throw new ApiError(404, "User doesn't exists.");
+    throw new ApiError(404, "User doesn't exist");
   }
 
   return user;
@@ -88,14 +90,73 @@ const findUserByEmail = async (email) => {
  * @returns {Promise<Object>} Updated user object
  */
 const updateUserById = async (userId, updateData) => {
-  // Prevent password update through this function
-  if (updateData.password) {
-    throw new ApiError(400, "Password cannot be updated through this endpoint");
+  const user = await User.findById(userId);
+  if (!user) {
+    throw new ApiError(404, "User doesn't exist");
   }
 
+  // Create a new object to hold the updates
+  const updates = {};
+
+  // Process basic fields
+  const basicFields = ["firstName", "lastName", "phone"];
+  basicFields.forEach((field) => {
+    if (updateData[field] !== undefined) {
+      updates[field] = updateData[field];
+    }
+  });
+
+  // Process email with validation
+  if (updateData.email !== undefined) {
+    const existingUser = await User.findOne({ email: updateData.email });
+
+    if (existingUser && existingUser._id.toString() !== userId) {
+      throw new ApiError(409, "Email is already taken");
+    }
+
+    updates.email = updateData.email;
+  }
+
+  // Process username with validation
+  if (updateData.username !== undefined) {
+    const existingUser = await User.findOne({ username: updateData.username });
+    if (existingUser && existingUser._id.toString() !== userId) {
+      throw new ApiError(409, "Username is already taken");
+    }
+    updates.username = updateData.username;
+  }
+
+  // Process address object (nested fields)
+  if (updateData.address) {
+    updates.address = {};
+
+    // Get current address values as defaults
+    if (user.address) {
+      Object.keys(user.address.toObject()).forEach((key) => {
+        updates.address[key] = user.address[key];
+      });
+    }
+
+    // Update each address field if provided
+    const addressFields = [
+      "country",
+      "state",
+      "district",
+      "city",
+      "villageName",
+      "pincode",
+    ];
+    addressFields.forEach((field) => {
+      if (updateData.address[field] !== undefined) {
+        updates.address[field] = updateData.address[field];
+      }
+    });
+  }
+
+  // Find and update with the prepared updates
   const updatedUser = await User.findByIdAndUpdate(
     userId,
-    { $set: updateData },
+    { $set: updates },
     { new: true, runValidators: true }
   ).select("-password -refreshToken -resetPasswordToken -resetPasswordExpires");
 
@@ -159,7 +220,7 @@ const generatePasswordResetToken = async (email) => {
  * @returns {Promise<boolean>} Success status
  */
 const resetPassword = async (resetToken, newPassword) => {
-  if (!resetToken || typeof resetToken !== 'string') {
+  if (!resetToken || typeof resetToken !== "string") {
     throw new ApiError(400, "Invalid reset token provided");
   }
 
@@ -255,11 +316,15 @@ const updateAvatar = async (userId, localFilePath, useCloudinary = true) => {
   }
 
   // Upload new avatar
-  const avatarUrl = await file.uploadFile(localFilePath, "avatars", useCloudinary);
+  const avatarUrl = await file.uploadFile(
+    localFilePath,
+    "avatars",
+    useCloudinary
+  );
 
   // Update user record
   const updatedUser = await updateUserById(userId, { avatar: avatarUrl });
-  
+
   return updatedUser;
 };
 
@@ -274,5 +339,5 @@ export {
   resetPassword,
   updateLoginAttempts,
   generateAuthTokens,
-  updateAvatar
+  updateAvatar,
 };

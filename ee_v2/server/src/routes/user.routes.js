@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { userController } from "../controllers/index.js";
-import { auth, multerUpload } from "../middlewares/index.js";
+import { auth, multerMiddleware } from "../middlewares/index.js";
 
 const userRouter = Router();
 
@@ -11,7 +11,7 @@ userRouter.route("/profile").put(userController.updateUserProfile);
 userRouter
   .route("/avatar")
   .patch(
-    multerUpload.uploadSingleImage("avatar"),
+    multerMiddleware.usrImgUpload.single("avatar"),
     userController.updateUserProfileAvatar
   );
 userRouter.route("/delete-account").delete(userController.deleteUserProfile);

@@ -1,79 +1,168 @@
-import multer from "multer";
-import { upload } from "../config/index.js";
+import { multerConfig } from "../config/index.js";
 import { ApiError, asyncHandler } from "../utils/index.js";
 
-/**
- * Middleware for uploading a single image
- * @param {string} fieldName - Field name in the form
- * @returns {Function} - Express middleware
- */
-const uploadSingleImage = (fieldName) => {
-  return asyncHandler(async (req, res, next) => {
-    const uploadMiddleware = upload.single(fieldName);
+const createUserUploadMiddleware = (resourceType = "image") => {
+  const fileTypes = ["image/jpeg", "image/png", "image/jpg"];
 
-    uploadMiddleware(req, res, (err) => {
-      if (err instanceof multer.MulterError) {
-        // A Multer error occurred when uploading
-        if (err.code === "LIMIT_FILE_SIZE") {
-          throw new ApiError(400, "File size is too large. Max size is 2MB");
-        }
-        throw new ApiError(400, err.message);
-      } else if (err) {
-        // An unknown error occurred
-        throw new ApiError(
-          500,
-          err.message || "Something went wrong with file upload"
-        );
-      }
+  const fileSize = multerConfig.FILE_SIZE_LIMITS;
 
-      // If no file was uploaded but the field was expected
-      if (!req.file && fieldName) {
-        throw new ApiError(400, `Please upload an image for ${fieldName}`);
-      }
-
-      next();
-    });
+  const uploader = multerConfig.createUploader({
+    model: "users",
+    identifierFn: (req) =>
+      req.user?.username ||
+      req.body?.username ||
+      req.params.userId ||
+      "unknown",
+    resourceType,
+    fileTypes,
+    fileSize,
   });
+
+  return {
+    /**
+     * Upload a single file for a user
+     * @param {string} fieldName - Form field name
+     */
+    single: (fieldName) => {
+      return asyncHandler(async (req, res, next) => {
+        uploader.single(fieldName)(req, res, (err) => {
+          if (err) {
+            if (err.code === "LIMIT_FILE_SIZE") {
+              return next(
+                new ApiError(
+                  400,
+                  `File too large. Max size: ${(fileSize / (1024 * 1024)).toFixed(1)}MB`
+                )
+              );
+            }
+            return next(err);
+          }
+          next();
+        });
+      });
+    },
+
+    /**
+     * Upload multiple files for a user
+     * @param {string} fieldName - Form field name
+     * @param {number} maxCount - Maximum number of files
+     */
+    array: (fieldName, maxCount = 5) => {
+      return asyncHandler(async (req, res, next) => {
+        uploader.array(fieldName, maxCount)(req, res, (err) => {
+          if (err) {
+            if (err.code === "LIMIT_FILE_SIZE") {
+              return next(
+                new ApiError(
+                  400,
+                  `File too large. Max size: ${(fileSize / (1024 * 1024)).toFixed(1)}MB`
+                )
+              );
+            } else if (err.code === "LIMIT_UNEXPECTED_FILE") {
+              return next(
+                new ApiError(400, `Too many files. Maximum is ${maxCount}`)
+              );
+            }
+            return next(err);
+          }
+
+          next();
+        });
+      });
+    },
+  };
 };
 
 /**
- * Middleware for uploading multiple images
- * @param {string} fieldName - Field name in the form
- * @param {number} maxCount - Maximum number of files
- * @returns {Function} - Express middleware
+ * Create upload middleware for blog-related files
+ * @param {string} resourceType - 'image' only
+ * @returns {Object} - Object with single and multiple upload methods
  */
-const uploadMultipleImages = (fieldName, maxCount = 5) => {
-  return asyncHandler(async (req, res, next) => {
-    const uploadMiddleware = upload.array(fieldName, maxCount);
-
-    uploadMiddleware(req, res, (err) => {
-      if (err instanceof multer.MulterError) {
-        // A Multer error occurred when uploading
-        if (err.code === "LIMIT_FILE_SIZE") {
-          throw new ApiError(400, "File size is too large. Max size is 2MB");
-        } else if (err.code === "LIMIT_UNEXPECTED_FILE") {
-          throw new ApiError(400, `Too many files. Maximum is ${maxCount}`);
-        }
-        throw new ApiError(400, err.message);
-      } else if (err) {
-        // An unknown error occurred
-        throw new ApiError(
-          500,
-          err.message || "Something went wrong with file upload"
-        );
-      }
-
-      // If no files were uploaded but the field was expected
-      if ((!req.files || req.files.length === 0) && fieldName) {
-        throw new ApiError(400, `Please upload at least one image for ${fieldName}`);
-      }
-
-      next();
-    });
+const createBlogUploadMiddleware = (resourceType = "image") => {
+  const uploader = multerConfig.createUploader({
+    model: "blogs",
+    identifierFn: (req) => req.params.blogId || req.body.blogId || "unknown",
+    resourceType,
+    fileTypes: ["image/jpeg", "image/png", "image/jpg"],
+    fileSize: multerConfig.FILE_SIZE_LIMITS.IMAGE,
   });
+
+  return {
+    single: (fieldName) => {
+      return asyncHandler(async (req, res, next) => {
+        uploader.single(fieldName)(req, res, (err) => {
+          if (err) {
+            return next(err);
+          }
+          next();
+        });
+      });
+    },
+
+    array: (fieldName, maxCount = 10) => {
+      return asyncHandler(async (req, res, next) => {
+        uploader.array(fieldName, maxCount)(req, res, (err) => {
+          if (err) {
+            return next(err);
+          }
+          next();
+        });
+      });
+    },
+  };
 };
 
-export { 
-  uploadSingleImage,
-  uploadMultipleImages
+/**
+ * Create upload middleware for tour-related files
+ * @param {string} resourceType - 'image' or 'video'
+ * @returns {Object} - Object with single and multiple upload methods
+ */
+const createTourUploadMiddleware = (resourceType = "image") => {
+  // Define allowed file types based on resource type
+  let fileTypes = ["image/jpeg", "image/png", "image/jpg"];
+  let fileSize = multerConfig.FILE_SIZE_LIMITS.IMAGE;
+
+  if (resourceType === "video") {
+    fileTypes = ["video/mp4", "video/quicktime", "video/webm"];
+    fileSize = multerConfig.FILE_SIZE_LIMITS.VIDEO;
+  }
+
+  const uploader = multerConfig.createUploader({
+    model: "tours",
+    identifierFn: (req) => req.params.tourId || req.body.tourId || "unknown",
+    resourceType,
+    fileTypes,
+    fileSize,
+  });
+
+  return {
+    single: (fieldName) => {
+      return asyncHandler(async (req, res, next) => {
+        uploader.single(fieldName)(req, res, (err) => {
+          if (err) {
+            return next(err);
+          }
+          next();
+        });
+      });
+    },
+
+    array: (fieldName, maxCount = 20) => {
+      return asyncHandler(async (req, res, next) => {
+        uploader.array(fieldName, maxCount)(req, res, (err) => {
+          if (err) {
+            return next(err);
+          }
+          next();
+        });
+      });
+    },
+  };
 };
+
+const usrImgUpload = createUserUploadMiddleware("image");
+const blogImgUpload = createBlogUploadMiddleware("image");
+const tourImgUpload = createTourUploadMiddleware("image");
+const tourVideoUpload = createTourUploadMiddleware("video");
+
+export { usrImgUpload, blogImgUpload, tourImgUpload, tourVideoUpload };

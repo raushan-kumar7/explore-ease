@@ -9,34 +9,37 @@ const cookieOptions = {
 };
 
 const signup = asyncHandler(async (req, res) => {
-  const { firstName, lastName, email, password, role = "user" } = req.body;
+  const { firstName, lastName, email, phone, password, role = "user" } = req.body;
 
-  if (!(firstName && lastName && email && password)) {
+  if (!(firstName && lastName && email && phone && password)) {
     throw new ApiError(400, "All fields are required");
   }
 
-  const newUsr = await usr.createUser({
+  const newUser = await usr.createUser({
     firstName,
     lastName,
     email,
+    phone,
     password,
     role,
   });
 
   return res
     .status(201)
-    .json(new ApiResponse(201, newUsr, "New user signup successfully."));
+    .json(new ApiResponse(201, newUser, "New user account created successfully."));
 });
 
 const signin = asyncHandler(async (req, res) => {
   const { userId, password } = req.body;
 
   if (!userId || !password) {
-    throw new ApiError(400, "User Id and password are required");
+    throw new ApiError(400, "User ID and password are required");
   }
 
   // Find user with password field included
-  const user = await User.findOne({ email: userId });
+  const user = await User.findOne({
+    $or: [{ email: userId }, { username: userId }]
+  });
 
   if (!user) {
     throw new ApiError(401, `User does not exist with this ${userId}`);
@@ -179,7 +182,7 @@ const forgotPassword = asyncHandler(async (req, res) => {
 
   const resetToken = await usr.generatePasswordResetToken(email);
   
-  // Generate reset URL if frontend URL is not provided
+  // Generate reset URL if frontend URL is provided
   let resetUrl;
   if (frontendResetUrl) {
     resetUrl = `${frontendResetUrl}?token=${resetToken}`;
@@ -222,24 +225,13 @@ const resetPassword = asyncHandler(async (req, res) => {
 
 const changePassword = asyncHandler(async (req, res) => {
   const { oldPassword, newPassword } = req.body;
-
   const user = req.user;
 
-  if (!(oldPassword || newPassword)) {
+  if (!oldPassword || !newPassword) {
     throw new ApiError(400, "Old password and new password are required");
   }
 
-  const userWithPassword = await User.findById(user._id);
-  const isPasswordCorrect =
-    await userWithPassword.isPasswordCorrect(oldPassword);
-
-  if (!isPasswordCorrect) {
-    throw new ApiError(400, "Invalid old password");
-  }
-
-  userWithPassword.password = newPassword;
-  userWithPassword.passwordChangedAt = new Date();
-  await userWithPassword.save({ validateBeforeSave: false });
+  await usr.changePassword(user._id, oldPassword, newPassword);
 
   return res
     .status(200)

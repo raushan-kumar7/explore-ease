@@ -2,6 +2,7 @@ import mongoose, { Schema } from "mongoose";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
+import slug from "slugify";
 
 const userSchema = new Schema(
   {
@@ -13,17 +14,28 @@ const userSchema = new Schema(
       type: String,
       required: true,
     },
+    username: {
+      type: String,
+      unique: true,
+      trim: true,
+      lowercase: true,
+    },
     role: {
       type: String,
       enum: ["admin", "user"],
-      required: true,
-      lowercase: true,
+      default: "user",
     },
     email: {
       type: String,
       required: true,
       unique: true,
+      trim: true,
       lowercase: true,
+    },
+    phone: {
+      type: String,
+      required: true,
+      trim: true,
     },
     password: {
       type: String,
@@ -33,6 +45,26 @@ const userSchema = new Schema(
       type: String,
       default:
         "https://res.cloudinary.com/cloud-alpha/image/upload/v1739464346/Tours/user_oxe2tu.png",
+    },
+    address: {
+      country: {
+        type: String,
+      },
+      state: {
+        type: String,
+      },
+      district: {
+        type: String,
+      },
+      city: {
+        type: String,
+      },
+      villageName: {
+        type: String,
+      },
+      pincode: {
+        type: String,
+      },
     },
     refreshToken: {
       type: String,
@@ -58,13 +90,37 @@ const userSchema = new Schema(
   { timestamps: true }
 );
 
+const generateUsername = async function (firstName, lastName) {
+  let baseUsername = slug(`${firstName} ${lastName}`, {
+    lower: true,
+    strict: true,
+  });
+  let username = baseUsername;
+  let count = 1;
+  while (await mongoose.models.User.findOne({ username })) {
+    username = `${baseUsername}-${count}`;
+    count++;
+  }
+  return username;
+};
+
 userSchema.pre("save", async function (next) {
-  if (!this.isModified("password")) return next();
-
-  this.password = await bcrypt.hash(this.password, 10);
-  next();
+  try {
+    if (!this.isModified("password")) {
+      return next();
+    }
+    this.password = await bcrypt.hash(this.password, 10);
+    if (!this.username) {
+      this.username = await generateUsername(
+        this.firstName,
+        this.lastName
+      );
+    }
+    next();
+  } catch (error) {
+    next(error);
+  }
 });
-
 userSchema.methods.isPasswordCorrect = async function (password) {
   return await bcrypt.compare(password, this.password);
 };
