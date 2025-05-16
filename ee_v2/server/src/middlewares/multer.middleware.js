@@ -160,9 +160,110 @@ const createTourUploadMiddleware = (resourceType = "image") => {
   };
 };
 
+/**
+ * Create upload middleware for message attachments
+ * @param {string} resourceType - 'attachment'
+ * @returns {Object} - Object with single and multiple upload methods
+ */
+const createMessageUploadMiddleware = (resourceType = "attachment") => {
+  // Allow various file types for message attachments
+  const fileTypes = [
+    // Images
+    "image/jpeg",
+    "image/png",
+    "image/jpg",
+    "image/gif",
+    // Documents
+    "application/pdf",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/vnd.ms-excel",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "text/plain",
+    // Audio
+    "audio/mpeg",
+    "audio/mp3",
+    "audio/wav",
+    // Video
+    "video/mp4",
+    "video/quicktime",
+  ];
+
+  const fileSize = multerConfig.FILE_SIZE_LIMITS.ATTACHMENT || 10 * 1024 * 1024; // Default 10MB if not specified
+
+  const uploader = multerConfig.createUploader({
+    model: "messages",
+    identifierFn: (req) => req.params.chatId || "unknown",
+    resourceType,
+    fileTypes,
+    fileSize,
+  });
+
+  return {
+    /**
+     * Upload a single attachment
+     * @param {string} fieldName - Form field name
+     */
+    single: (fieldName) => {
+      return asyncHandler(async (req, res, next) => {
+        uploader.single(fieldName)(req, res, (err) => {
+          if (err) {
+            if (err.code === "LIMIT_FILE_SIZE") {
+              return next(
+                new ApiError(
+                  400,
+                  `File too large. Max size: ${(fileSize / (1024 * 1024)).toFixed(1)}MB`
+                )
+              );
+            }
+            return next(err);
+          }
+          next();
+        });
+      });
+    },
+
+    /**
+     * Upload multiple attachments
+     * @param {string} fieldName - Form field name
+     * @param {number} maxCount - Maximum number of files
+     */
+    array: (fieldName, maxCount = 5) => {
+      return asyncHandler(async (req, res, next) => {
+        uploader.array(fieldName, maxCount)(req, res, (err) => {
+          if (err) {
+            if (err.code === "LIMIT_FILE_SIZE") {
+              return next(
+                new ApiError(
+                  400,
+                  `File too large. Max size: ${(fileSize / (1024 * 1024)).toFixed(1)}MB`
+                )
+              );
+            } else if (err.code === "LIMIT_UNEXPECTED_FILE") {
+              return next(
+                new ApiError(400, `Too many files. Maximum is ${maxCount}`)
+              );
+            }
+            return next(err);
+          }
+
+          next();
+        });
+      });
+    },
+  };
+};
+
 const usrImgUpload = createUserUploadMiddleware("image");
 const blogImgUpload = createBlogUploadMiddleware("image");
 const tourImgUpload = createTourUploadMiddleware("image");
 const tourVideoUpload = createTourUploadMiddleware("video");
+const msgAttachmentUpload = createMessageUploadMiddleware("attachment");
 
-export { usrImgUpload, blogImgUpload, tourImgUpload, tourVideoUpload };
+export {
+  usrImgUpload,
+  blogImgUpload,
+  tourImgUpload,
+  tourVideoUpload,
+  msgAttachmentUpload,
+};
