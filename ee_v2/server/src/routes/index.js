@@ -8,6 +8,8 @@ import tourRouter from "./tour.routes.js";
 import blogRouter from "./blog.routes.js";
 import reviewRouter from "./review.routes.js";
 import commentRouter from "./comment.routes.js";
+import bookingRouter from "./booking.routes.js";
+import paymentRouter from "./payment.routes.js";
 
 const router = Router();
 
@@ -20,5 +22,7 @@ router.use("/tours", tourRouter);
 router.use("/blogs", blogRouter);
 router.use("/reviews", reviewRouter);
 router.use("/comments", commentRouter);
+router.use("/bookings", bookingRouter);
+router.use("/payments", paymentRouter);
 
 export default router;

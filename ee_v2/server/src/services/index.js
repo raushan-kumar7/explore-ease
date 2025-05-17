@@ -7,6 +7,8 @@ import * as tourService from "./tour.service.js";
 import * as blogService from "./blog.service.js";
 import * as reviewService from "./review.service.js";
 import * as commentService from "./comment.service.js";
+import * as bookingService from "./booking.service.js";
+import * as paymentService from "./payment.service.js"
 
 export {
   health,
@@ -18,4 +20,6 @@ export {
   blogService,
   reviewService,
   commentService,
+  bookingService,
+  paymentService,
 };

@@ -7,6 +7,8 @@ import * as tourController from "./tour.controller.js";
 import * as blogController from "./blog.controller.js";
 import * as reviewController from "./review.controller.js";
 import * as commentController from "./comment.controller.js";
+import * as bookingController from "./booking.controller.js";
+import * as paymentController from "./payment.controller.js";
 
 export {
   healthController,
@@ -18,4 +20,6 @@ export {
   blogController,
   reviewController,
   commentController,
+  bookingController,
+  paymentController,
 };
