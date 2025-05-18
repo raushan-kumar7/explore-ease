@@ -130,3 +130,15 @@
 {"level":"info","message":"GET /api/v1/bookings/stats","timestamp":"2025-05-17T14:39:46.940Z"}
 {"level":"info","message":"GET /api/v1/bookings/stats","timestamp":"2025-05-17T14:41:21.461Z"}
 {"level":"info","message":"GET /api/v1/bookings/stats","timestamp":"2025-05-17T14:42:23.027Z"}
+{"level":"info","message":"POST /api/v1/auth/signin","timestamp":"2025-05-18T09:32:41.437Z"}
+{"level":"info","message":"POST /api/v1/auth/signin","timestamp":"2025-05-18T09:34:25.059Z"}
+{"level":"info","message":"POST /api/v1/auth/signin","timestamp":"2025-05-18T09:35:02.814Z"}
+{"level":"info","message":"POST /api/v1/auth/signin","timestamp":"2025-05-18T09:35:22.706Z"}
+{"level":"info","message":"POST /api/v1/auth/signin","timestamp":"2025-05-18T09:35:48.543Z"}
+{"level":"info","message":"POST /api/v1/auth/signin","timestamp":"2025-05-18T09:40:14.682Z"}
+{"level":"info","message":"POST /api/v1/auth/signin","timestamp":"2025-05-18T09:41:57.812Z"}
+{"level":"info","message":"POST /api/v1/auth/signup","timestamp":"2025-05-18T09:55:11.170Z"}
+{"level":"info","message":"POST /api/v1/auth/signup","timestamp":"2025-05-18T09:55:22.527Z"}
+{"level":"info","message":"POST /api/v1/auth/signup","timestamp":"2025-05-18T09:56:33.594Z"}
+{"level":"info","message":"POST /api/v1/auth/signup","timestamp":"2025-05-18T09:57:33.166Z"}
+{"level":"info","message":"POST /api/v1/auth/signin","timestamp":"2025-05-18T09:58:02.194Z"}
