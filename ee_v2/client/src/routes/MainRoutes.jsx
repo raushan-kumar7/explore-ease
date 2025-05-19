@@ -1,5 +1,6 @@
+import { BlogDetails, TourDetails } from "@/components";
 import { AdminLayout, MainLayout, UserLayout } from "@/layouts";
-import { About, Home, NotFound, Signin, Signup } from "@/pages";
+import { About, Blogs, Contact, Home, NotFound, Signin, Signup, Tours } from "@/pages";
 import {
   createBrowserRouter,
   createRoutesFromElements,
@@ -17,9 +18,11 @@ const MainRoutes = createBrowserRouter(
           <Route path="signin" element={<Signin/>} />
         </Route>
         <Route path="/about" element={<About/>} />
-        <Route path="/contact" element={<div>Contact</div>} />
-        <Route path="/tours" element={<div>Tours</div>} />
-        <Route path="/blogs" element={<div>Blog</div>} />
+        <Route path="/contact" element={<Contact/>} />
+        <Route path="/tours" element={<Tours/>} />
+        <Route path="/tours/:slugOrId" element={<TourDetails/>}/>
+        <Route path="/blogs" element={<Blogs/>} />
+        <Route path="/blogs/:slug" element={<BlogDetails/>}/>
       </Route>
 
       {/* User Routes */}

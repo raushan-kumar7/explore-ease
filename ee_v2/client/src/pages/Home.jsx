@@ -1,5 +1,6 @@
 import {
   Experience,
+  FeaturedTours,
   Gallery,
   Hero,
   Newsletter,
@@ -16,6 +17,7 @@ const Home = () => {
       <SearchBar />
       <Services />
       {/** Featured Tour */}
+      <FeaturedTours/>
       <Experience />
       {/* <Gallery/> */}
       <Testimonial />

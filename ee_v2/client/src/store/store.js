@@ -1,10 +1,12 @@
 import { configureStore } from "@reduxjs/toolkit";
-import { authReducer, userReducer } from "./slices";
+import { authReducer, tourReducer, userReducer, blogReducer } from "./slices";
 
 const store = configureStore({
   reducer: {
     auth: authReducer,
     user: userReducer,
+    tour: tourReducer,
+    blog: blogReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
@@ -12,6 +14,12 @@ const store = configureStore({
         ignoreActions: [
           "auth/signin/fulfilled",
           "user/updateProfile/fulfilled",
+          "tour/createTour/fulfilled",
+          "tour/updateTour/fulfilled",
+          "tour/updateTourImages/fulfilled",
+          "blog/createBlog/fulfilled",
+          "blog/updateBlog/fulfilled",
+          "blog/updateBlogImage/fulfilled",
         ],
       },
     }),

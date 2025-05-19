@@ -10,6 +10,7 @@ import about from "./images/airport.jpg";
 import contact from "./images/contact.gif";
 import travel1 from "./images/travel-exp.jpg";
 import travel2 from "./images/traveling.jpg";
+import error_404 from "./images/404_error.jpg"
 
 import heroVideo from "./videos/hero-video.mp4";
 
@@ -26,6 +27,7 @@ export const images = {
   contact,
   travel1,
   travel2,
+  error_404
 };
 
 export const videos = { heroVideo };
